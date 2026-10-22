@@ -72,6 +72,9 @@ class RoleSelectionScreen extends StatelessWidget {
                   _buildRoleCard(context, 'Patient Portal', Icons.personal_injury, 'Book appointments', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AppointmentBookingScreen()))),
                   const SizedBox(width: 32),
                   _buildRoleCard(context, 'Doctor Portal', Icons.medical_information, 'Manage queues & Rx', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DoctorLoginScreen()))),
+                  const SizedBox(width: 32),
+                  // New Admin Card added here
+                  _buildRoleCard(context, 'Admin Portal', Icons.insights, 'Hospital analytics', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen()))),
                 ],
               ),
             ),
@@ -444,6 +447,97 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                       );
                     },
                   ),
+      ),
+    );
+  }
+}
+
+class AdminDashboardScreen extends StatefulWidget {
+  const AdminDashboardScreen({Key? key}) : super(key: key);
+  @override
+  _AdminDashboardScreenState createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  Map<String, dynamic> stats = {};
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchStats();
+  }
+
+  Future<void> fetchStats() async {
+    try {
+      final response = await http.get(Uri.parse('http://localhost:8000/admin/stats'));
+      if (response.statusCode == 200) {
+        setState(() { stats = jsonDecode(response.body); isLoading = false; });
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(title: const Text('Hospital Management Analytics'), backgroundColor: Colors.black.withOpacity(0.5), elevation: 0),
+        body: isLoading 
+          ? const Center(child: CircularProgressIndicator(color: Colors.cyanAccent))
+          : Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: _buildStatCard('Total Patients', stats['total_appointments'].toString(), Icons.people)),
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildStatCard('Total Revenue', '₹${stats['total_revenue']}', Icons.currency_rupee)),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Expanded(
+                    child: Card(
+                      color: Colors.black.withOpacity(0.7),
+                      shape: RoundedRectangleBorder(side: BorderSide(color: Colors.white.withOpacity(0.15), width: 1), borderRadius: BorderRadius.circular(16)),
+                      child: ListView.builder(
+                        itemCount: (stats['doctor_load'] as List).length,
+                        itemBuilder: (context, index) {
+                          final doc = stats['doctor_load'][index];
+                          return ListTile(
+                            leading: const Icon(Icons.person, color: Colors.cyanAccent),
+                            title: Text(doc['doctor'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            trailing: Text('${doc['count']} Patients', style: const TextStyle(color: Colors.greenAccent, fontSize: 16)),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, IconData icon) {
+    return Card(
+      color: Colors.black.withOpacity(0.75),
+      shape: RoundedRectangleBorder(side: BorderSide(color: Colors.white.withOpacity(0.15), width: 1), borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            Icon(icon, size: 48, color: Colors.cyanAccent),
+            const SizedBox(height: 16),
+            Text(value, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+            const SizedBox(height: 8),
+            Text(title, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+          ],
+        ),
       ),
     );
   }
